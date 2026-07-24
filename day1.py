@@ -14,3 +14,10 @@ print(is_developer)
 your_name= input("what is your name?")
 your_age= input("how old are you?")
 print("hello" + your_name + "! You are" + your_age + " years old.")
+
+#If/Else conditions
+age = int(input("Enter your age:"))
+if age >= 18:
+    print("You are an adult")
+else:
+    print("You are a minor")
