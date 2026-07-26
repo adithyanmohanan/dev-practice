@@ -22,5 +22,18 @@ def get_job(id):
         return jsonify(job)
     return jsonify({"error": "Job not found"}), 404
 
+# POST - Create new job
+@app.route("/jobs", methods=["POST"])
+def create_job():
+    data = request.get_json()
+    new_job = {
+        "id": len(jobs) + 1,
+        "title": data["title"],
+        "company": data["company"],
+        "salary": data["salary"]
+    }
+    jobs.append(new_job)
+    return jsonify(new_job), 201
+
 if __name__ == "__main__":
     app.run(debug=True)
