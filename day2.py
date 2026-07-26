@@ -41,3 +41,14 @@ student1.introduce()
 student2.introduce()
 student1.is_adult()
 student2.is_adult()
+
+# Error handling
+try:
+    num = int(input("Enter a number:"))
+    print(100 / num)
+except ValueError:
+    print("Please enter a valid number")
+except ZeroDivisionError:
+    print("Cannot divide by zero")
+finally:
+    print("Done")
