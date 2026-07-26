@@ -52,3 +52,14 @@ except ZeroDivisionError:
     print("Cannot divide by zero")
 finally:
     print("Done")
+
+# File Handling
+file = open("test.txt", "w")
+file.write("Hello, this is Adithyan\n")
+file.write("I am learning Python\n")
+file.close()
+
+file = open("test.txt", "r")
+content = file.read()
+file.close()
+print(content)
