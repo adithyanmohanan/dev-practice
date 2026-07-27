@@ -35,5 +35,25 @@ def create_job():
     jobs.append(new_job)
     return jsonify(new_job), 201
 
+# PUT - Update existing job
+@app.route("/jobs/<int:job_id>", methods=["PUT"])
+def update_job(job_id):
+    data = request.get_json()
+    for job in jobs:
+        if job["id"] == job_id:
+            job["title"] = data.get("title", job["title"])
+            job["company"] = data.get("company", job["company"])
+            job["salary"] = data.get("salary", job["salary"])
+            return jsonify(job), 200
+    return jsonify({"error": "Job not found"}), 404
+
+# DELETE - Remove a job
+@app.route("/jobs/<int:job_id>", methods=["DELETE"])
+def delete_job(job_id):
+    global jobs
+    jobs = [job for job in jobs if job["id"] != job_id]
+    return jsonify({"message": "Job deleted"}), 200
+
 if __name__ == "__main__":
     app.run(debug=True)
+
