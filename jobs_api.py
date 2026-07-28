@@ -1,23 +1,43 @@
 from flask import Flask, jsonify, request
+import mysql.connector
+
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+print("password loaded:", os.getenv("DB_PASSWORD"))
+
+def get_db_connection():
+    return mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password=os.getenv("DB_PASSWORD"),
+        database="jobs_db"
+    )
 
 app = Flask(__name__)
-
-# Temporary database (list of jobs)
-jobs = [
-    {"id": 1, "title": "Backend Developer", "company": "TechStartup", "salary": 45000},
-    {"id": 2, "title": "Full Stack Developer", "company": "ProductCo", "salary": 50000},
-    {"id": 3, "title": "Python Developer", "company": "DataFirm", "salary": 40000}
-]
 
 # GET all jobs
 @app.route("/jobs", methods=["GET"])
 def get_jobs():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM jobs")
+    jobs = cursor.fetchall()
+    cursor.close()
+    conn.close()
     return jsonify(jobs)
 
 # GET single job by ID
 @app.route("/jobs/<int:id>", methods=["GET"])
 def get_job(id):
-    job = next((j for j in jobs if j["id"] == id), None)
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM jobs WHERE id = %s", (id,))
+    job = cursor.fetchone()
+    cursor.close()
+    conn.close()
     if job:
         return jsonify(job)
     return jsonify({"error": "Job not found"}), 404
@@ -26,34 +46,57 @@ def get_job(id):
 @app.route("/jobs", methods=["POST"])
 def create_job():
     data = request.get_json()
-    new_job = {
-        "id": len(jobs) + 1,
-        "title": data["title"],
-        "company": data["company"],
-        "salary": data["salary"]
-    }
-    jobs.append(new_job)
-    return jsonify(new_job), 201
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO jobs (title, company, salary) VALUES (%s, %s, %s)",
+        (data["title"], data["company"], data["salary"])
+    )
+    conn.commit()
+    new_id = cursor.lastrowid
+    cursor.close()
+    conn.close()
+    return jsonify({"id": new_id, "title": data["title"], "company": data["company"], "salary": data["salary"]}), 201
 
 # PUT - Update existing job
 @app.route("/jobs/<int:job_id>", methods=["PUT"])
 def update_job(job_id):
     data = request.get_json()
-    for job in jobs:
-        if job["id"] == job_id:
-            job["title"] = data.get("title", job["title"])
-            job["company"] = data.get("company", job["company"])
-            job["salary"] = data.get("salary", job["salary"])
-            return jsonify(job), 200
-    return jsonify({"error": "Job not found"}), 404
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM jobs WHERE id = %s", (job_id,))
+    job = cursor.fetchone()
+    if not job:
+        cursor.close()
+        conn.close()
+        return jsonify({"error": "Job not found"}), 404
+
+    title = data.get("title", job["title"])
+    company = data.get("company", job["company"])
+    salary = data.get("salary", job["salary"])
+
+    update_cursor = conn.cursor()
+    update_cursor.execute(
+        "UPDATE jobs SET title = %s, company = %s, salary = %s WHERE id = %s",
+        (title, company, salary, job_id)
+    )
+    conn.commit()
+    update_cursor.close()
+    cursor.close()
+    conn.close()
+
+    return jsonify({"id": job_id, "title": title, "company": company, "salary": salary}), 200
 
 # DELETE - Remove a job
 @app.route("/jobs/<int:job_id>", methods=["DELETE"])
 def delete_job(job_id):
-    global jobs
-    jobs = [job for job in jobs if job["id"] != job_id]
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM jobs WHERE id = %s", (job_id,))
+    conn.commit()
+    cursor.close()
+    conn.close()
     return jsonify({"message": "Job deleted"}), 200
 
 if __name__ == "__main__":
     app.run(debug=True)
-
