@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request
+from flask_bcrypt import Bcrypt
 import mysql.connector
 
 import os
@@ -17,6 +18,7 @@ def get_db_connection():
     )
 
 app = Flask(__name__)
+bcrypt = Bcrypt(app)
 
 # GET all jobs
 @app.route("/jobs", methods=["GET"])
@@ -108,6 +110,40 @@ def delete_job(job_id):
     cursor.close()
     conn.close()
     return jsonify({"message": "Job deleted"}), 200
+
+# REGISTER - Create a new user
+@app.route('/register', methods=['POST'])
+def register():
+    data = request.json
+    username = data.get('username')
+    email = data.get('email')
+    password = data.get('password')
+
+    if not username or not email or not password:
+        return jsonify({"error": "Missing fields"}), 400
+
+    hashed_pw = bcrypt.generate_password_hash(password).decode('utf-8')
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
+    existing = cursor.fetchone()
+
+    if existing:
+        cursor.close()
+        conn.close()
+        return jsonify({"error": "Email already registered"}), 409
+
+    cursor.execute(
+        "INSERT INTO users (username, email, password_hash) VALUES (%s, %s, %s)",
+        (username, email, hashed_pw)
+    )
+    conn.commit()
+    new_user_id = cursor.lastrowid
+    cursor.close()
+    conn.close()
+
+    return jsonify({"id": new_user_id, "username": username, "email": email}), 201
 
 if __name__ == "__main__":
     app.run(debug=True)
