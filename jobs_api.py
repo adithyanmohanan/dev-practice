@@ -23,7 +23,12 @@ app = Flask(__name__)
 def get_jobs():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM jobs")
+    cursor.execute("""
+    SELECT jobs.id, jobs.title, jobs.salary, 
+           companies.name AS company_name, companies.location AS company_location
+    FROM jobs
+    LEFT JOIN companies ON jobs.company_id = companies.id
+""")
     jobs = cursor.fetchall()
     cursor.close()
     conn.close()
@@ -34,7 +39,13 @@ def get_jobs():
 def get_job(id):
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM jobs WHERE id = %s", (id,))
+    cursor.execute("""
+    SELECT jobs.id, jobs.title, jobs.salary,
+           companies.name AS company_name, companies.location AS company_location
+    FROM jobs
+    LEFT JOIN companies ON jobs.company_id = companies.id
+    WHERE jobs.id = %s
+""", (id,))
     job = cursor.fetchone()
     cursor.close()
     conn.close()
