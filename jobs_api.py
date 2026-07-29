@@ -49,14 +49,14 @@ def create_job():
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO jobs (title, company, salary) VALUES (%s, %s, %s)",
-        (data["title"], data["company"], data["salary"])
+        "INSERT INTO jobs (title, company, salary, company_id) VALUES (%s, %s, %s, %s)",
+        (data["title"], data["company"], data["salary"], data.get("company_id"))
     )
     conn.commit()
     new_id = cursor.lastrowid
     cursor.close()
     conn.close()
-    return jsonify({"id": new_id, "title": data["title"], "company": data["company"], "salary": data["salary"]}), 201
+    return jsonify({"id": new_id, "title": data["title"], "company": data["company"], "salary": data["salary"], "company_id": data.get("company_id")}), 201
 
 # PUT - Update existing job
 @app.route("/jobs/<int:job_id>", methods=["PUT"])
