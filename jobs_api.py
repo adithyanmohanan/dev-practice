@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request
 from flask_bcrypt import Bcrypt
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 import mysql.connector
 
 import os
@@ -19,6 +20,8 @@ def get_db_connection():
 
 app = Flask(__name__)
 bcrypt = Bcrypt(app)
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+jwt = JWTManager(app)
 
 # GET all jobs
 @app.route("/jobs", methods=["GET"])
@@ -102,7 +105,10 @@ def update_job(job_id):
 
 # DELETE - Remove a job
 @app.route("/jobs/<int:job_id>", methods=["DELETE"])
+@jwt_required()
 def delete_job(job_id):
+    current_user_id = get_jwt_identity()
+    print(f"Delete requested by user: {current_user_id}")
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM jobs WHERE id = %s", (job_id,))
@@ -165,7 +171,13 @@ def login():
     if not user or not bcrypt.check_password_hash(user['password_hash'], password):
         return jsonify({"error": "Invalid email or password"}), 401
 
-    return jsonify({"id": user['id'], "username": user['username'], "email": user['email']}), 200
+    access_token = create_access_token(identity=str(user['id']))
+    return jsonify({
+    "id": user['id'],
+    "username": user['username'],
+    "email": user['email'],
+    "access_token": access_token
+    }), 200
 
 if __name__ == "__main__":
     app.run(debug=True)
