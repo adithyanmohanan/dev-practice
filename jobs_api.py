@@ -145,5 +145,27 @@ def register():
 
     return jsonify({"id": new_user_id, "username": username, "email": email}), 201
 
+# LOGIN - Authenticate a user
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.json
+    email = data.get('email')
+    password = data.get('password')
+
+    if not email or not password:
+        return jsonify({"error": "Missing fields"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+    user = cursor.fetchone()
+    cursor.close()
+    conn.close()
+
+    if not user or not bcrypt.check_password_hash(user['password_hash'], password):
+        return jsonify({"error": "Invalid email or password"}), 401
+
+    return jsonify({"id": user['id'], "username": user['username'], "email": user['email']}), 200
+
 if __name__ == "__main__":
     app.run(debug=True)
