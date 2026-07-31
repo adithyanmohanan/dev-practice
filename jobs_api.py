@@ -60,13 +60,15 @@ def get_job(id):
 
 # POST - Create new job
 @app.route("/jobs", methods=["POST"])
+@jwt_required()
 def create_job():
+    current_user_id = get_jwt_identity()
     data = request.get_json()
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO jobs (title, company, salary, company_id) VALUES (%s, %s, %s, %s)",
-        (data["title"], data["company"], data["salary"], data.get("company_id"))
+        "INSERT INTO jobs (title, company, salary, company_id, user_id) VALUES (%s, %s, %s, %s, %s)",
+        (data["title"], data["company"], data["salary"], data.get("company_id"), current_user_id)
     )
     conn.commit()
     new_id = cursor.lastrowid
@@ -76,7 +78,9 @@ def create_job():
 
 # PUT - Update existing job
 @app.route("/jobs/<int:job_id>", methods=["PUT"])
+@jwt_required()
 def update_job(job_id):
+    current_user_id = get_jwt_identity()
     data = request.get_json()
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -86,6 +90,11 @@ def update_job(job_id):
         cursor.close()
         conn.close()
         return jsonify({"error": "Job not found"}), 404
+
+    if job["user_id"] != int(current_user_id):
+        cursor.close()
+        conn.close()
+        return jsonify({"error": "Forbidden — not your job"}), 403
 
     title = data.get("title", job["title"])
     company = data.get("company", job["company"])
@@ -108,9 +117,22 @@ def update_job(job_id):
 @jwt_required()
 def delete_job(job_id):
     current_user_id = get_jwt_identity()
-    print(f"Delete requested by user: {current_user_id}")
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("SELECT user_id FROM jobs WHERE id = %s", (job_id,))
+    job = cursor.fetchone()
+
+    if not job:
+        cursor.close()
+        conn.close()
+        return jsonify({"error": "Job not found"}), 404
+
+    if job["user_id"] != int(current_user_id):
+        cursor.close()
+        conn.close()
+        return jsonify({"error": "Forbidden — not your job"}), 403
+
     cursor.execute("DELETE FROM jobs WHERE id = %s", (job_id,))
     conn.commit()
     cursor.close()
