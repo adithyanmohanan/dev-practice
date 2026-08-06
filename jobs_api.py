@@ -16,7 +16,7 @@ def get_db_connection():
         host="localhost",
         user="root",
         password=os.getenv("DB_PASSWORD"),
-        database="jobs_db"
+        database="job_board"
     )
 
 app = Flask(__name__)
